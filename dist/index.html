@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="人物 IP 表情动作拆解、动态参数提取与 Prompt 反向复刻工作台。">
+  <title>灵动表情 Prompt 实验室</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="灵动表情 Prompt 实验室首页">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M8 10.5c2-3 4.7-4.5 8-4.5s6 1.5 8 4.5M10.5 14h.01M21.5 14h.01M11 21c1.5 1.6 3.2 2.4 5 2.4s3.5-.8 5-2.4" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/><path d="M16 2.5c7.45 0 13.5 6.04 13.5 13.5S23.45 29.5 16 29.5 2.5 23.45 2.5 16 8.54 2.5 16 2.5Z" stroke="currentColor" stroke-width="1.5"/></svg>
+        </span>
+        <span><strong>灵动表情</strong><small>Prompt 实验室</small></span>
+      </a>
+      <div class="topbar-actions">
+        <span class="prototype-badge"><i></i> 前端原型</span>
+        <button class="icon-button" id="themeButton" type="button" aria-label="切换显示密度" title="切换显示密度">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="input-column" aria-labelledby="input-title">
+        <div class="column-heading">
+          <div><span class="eyebrow">01 · 素材输入</span><h1 id="input-title">建立当前 IP 样本</h1></div>
+          <button class="text-button" id="resetButton" type="button">重置</button>
+        </div>
+
+        <div class="mode-switch" role="radiogroup" aria-label="素材类型">
+          <button class="mode-option active" type="button" role="radio" aria-checked="true" data-mode="single">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="m7.5 16 3.2-3.2 2.2 2.2 2.6-3 2.9 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="9" r="1.2" fill="currentColor"/></svg>
+            <span><strong>单帧表情</strong><small>分析一个目标状态</small></span>
+          </button>
+          <button class="mode-option" type="button" role="radio" aria-checked="false" data-mode="sequence">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="12" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 3h9a4 4 0 0 1 4 4v9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="m7 14 2-2 2.5 2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span><strong>连续状态</strong><small>提取起始—过渡—目标</small></span>
+          </button>
+        </div>
+
+        <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="上传人物 IP 表情图片">
+          <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+          <div class="upload-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 15V4m0 0L8 8m4-4 4 4M5 14.5v3A2.5 2.5 0 0 0 7.5 20h9a2.5 2.5 0 0 0 2.5-2.5v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <strong>拖入人物表情素材</strong>
+          <p id="uploadHint">支持 PNG、JPG、WebP；单帧模式建议上传 1 张</p>
+          <span class="upload-action">选择图片</span>
+        </div>
+
+        <div class="frame-strip" id="frameStrip" aria-live="polite"></div>
+
+        <div class="form-block">
+          <label for="ipName">当前 IP 名称 <span>选填</span></label>
+          <input id="ipName" type="text" placeholder="例如：小卷、角色 A、未命名 IP" autocomplete="off">
+        </div>
+
+        <div class="form-block">
+          <div class="label-row"><label for="intensity">期望拆解精度</label><output id="intensityValue" for="intensity">精细</output></div>
+          <input id="intensity" class="range" type="range" min="1" max="3" value="2" step="1">
+          <div class="range-labels"><span>快速</span><span>精细</span><span>逐帧</span></div>
+        </div>
+
+        <div class="form-block">
+          <label for="notes">补充说明 <span>选填</span></label>
+          <textarea id="notes" rows="3" placeholder="例如：重点观察左眼眨动、嘴角从右向左抬起……"></textarea>
+        </div>
+
+        <div class="guardrail">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 5 6v5c0 4.7 2.8 8 7 10 4.2-2 7-5.3 7-10V6l-7-3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div><strong>角色一致性锁定</strong><p>脸型、五官比例、发型与原画风将作为固定约束，不主动进行跨 IP 迁移。</p></div>
+        </div>
+
+        <button class="primary-button" id="analyzeButton" type="button">
+          <span>开始动作拆解</span>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <p class="model-note">当前为交互原型；接入视觉模型后可基于上传素材生成真实分析。</p>
+      </section>
+
+      <section class="result-column" aria-labelledby="result-title">
+        <div class="result-toolbar">
+          <div>
+            <span class="eyebrow">02 · 结构化结果</span>
+            <h2 id="result-title">表情动作分析</h2>
+          </div>
+          <div class="result-actions">
+            <span class="status-pill" id="statusPill"><i></i><span>示例结果</span></span>
+            <button class="secondary-button" id="exportButton" type="button" title="导出结构化 JSON">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              导出 JSON
+            </button>
+          </div>
+        </div>
+
+        <div class="result-empty" id="resultEmpty" hidden>
+          <div class="empty-symbol" aria-hidden="true"><span></span><span></span><span></span></div>
+          <h3>等待素材分析</h3><p>上传当前人物 IP 的表情图片后，系统会按统一字段生成动作拆解与可复制 Prompt。</p>
+        </div>
+
+        <div class="result-content" id="resultContent">
+          <div class="summary-grid">
+            <article class="summary-card ip-card">
+              <div class="card-icon cyan"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 20c.8-4 3.3-6 7.5-6s6.7 2 7.5 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+              <div><span>当前 IP 特征</span><p id="ipFeatures">圆润短脸，大头身比例；深色短发带一缕翘发；豆形黑瞳与短弧眉；小尺寸线性嘴；扁平赛璐璐插画风，青蓝外套为身份锚点。</p></div>
+            </article>
+            <article class="summary-card emotion-card">
+              <div class="emotion-head"><div class="card-icon coral"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.8 5.7c-1.8-2.1-5-2.2-7-.2L12 7.3l-1.8-1.8a4.8 4.8 0 0 0-7 .2c-1.7 2.1-1.4 5.2.5 7.1L12 21l8.3-8.2a5 5 0 0 0 .5-7.1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></div><span>情绪识别</span></div>
+              <div class="emotion-values"><strong id="primaryEmotion">惊喜</strong><span>次级：害羞、期待</span></div>
+              <div class="intensity-meter" aria-label="情绪强度 78%"><span style="width:78%"></span></div>
+              <small>强度 78% · 由克制向外显快速过渡</small>
+            </article>
+          </div>
+
+          <article class="analysis-card movement-card">
+            <div class="section-title"><div><span class="eyebrow">动作拆解</span><h3>六个可控维度</h3></div><span class="frame-count" id="frameCount">单帧推断</span></div>
+            <div class="movement-list" id="movementList">
+              <div class="movement-row"><span class="movement-label">眼睛</span><p><b>睁合 +35%</b>，上眼睑快速抬起；双瞳向画面右上偏移约 12%，右眼高光先增强，随后左眼跟进聚焦。</p><span class="direction-tag">↗ 右上</span></div>
+              <div class="movement-row"><span class="movement-label">眉毛</span><p>双眉由平直转为上扬，<b>内眉端抬高约 18%</b>；右眉先动、左眉延迟半拍，保留轻微不对称。</p><span class="direction-tag">↑ 上扬</span></div>
+              <div class="movement-row"><span class="movement-label">嘴部</span><p>嘴唇由轻闭转为小幅 O 形张开，嘴角先下压再回弹；最终开口约占脸宽 9%，下唇轻微前探。</p><span class="direction-tag">○ 张开</span></div>
+              <div class="movement-row"><span class="movement-label">头部</span><p>头部向画面左侧歪 6°，同时后仰约 4°；动作幅度小于眼部变化，用于强化突发感。</p><span class="direction-tag">↖ 左倾</span></div>
+              <div class="movement-row"><span class="movement-label">附加</span><p>双颊出现低饱和粉红，右侧先显、再向左侧扩散；瞳孔高光放大，鼻梁下方阴影轻微收紧。</p><span class="direction-tag">≈ 扩散</span></div>
+              <div class="movement-row"><span class="movement-label">节奏</span><p>0–30% 快速触发眼睑与右眉，30–65% 嘴部和头部跟进，65–100% 缓慢收束并停留 0.6 秒。</p><span class="direction-tag">快 → 慢</span></div>
+            </div>
+          </article>
+
+          <div class="insight-row">
+            <article class="analysis-card vitality-card">
+              <div class="small-heading"><span>灵动感核心</span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m13 2-1 7h7l-9 13 1-8H5l8-12Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></div>
+              <p id="vitalityCore">眼神先于嘴部发生变化，右侧五官领先左侧半拍；短促的“惊起”后用微弱歪头和高光回弹收束，形成非机械的错峰节奏。</p>
+            </article>
+            <article class="analysis-card keyword-card">
+              <div class="small-heading"><span>动态关键词</span><small>10 项</small></div>
+              <div class="chips" id="keywordChips"><span>眼睑快抬</span><span>右眉先动</span><span>瞳孔右上移</span><span>高光回弹</span><span>小 O 型嘴</span><span>嘴角先降后升</span><span>左歪头 6°</span><span>轻微后仰</span><span>腮红右→左</span><span>快起慢停</span></div>
+            </article>
+          </div>
+
+          <article class="analysis-card parameter-card">
+            <div class="small-heading"><span>动作参数描述</span><small>部位 + 方向 + 幅度 + 顺序 + 速度 + 终态</small></div>
+            <ol id="parameterList">
+              <li><i>01</i><p><b>眼睑</b> → 双侧向上抬起 35% → 右眼先、左眼后 → 120ms 快速完成 → 最终保持大睁。</p></li>
+              <li><i>02</i><p><b>瞳孔</b> → 向画面右上平移 12% → 眼睑打开后立即启动 → 180ms 缓出 → 最终聚焦同一远点。</p></li>
+              <li><i>03</i><p><b>眉—嘴—头</b> → 右眉上扬、嘴部张开、头部左倾 → 依次延迟 60ms → 前快后慢 → 停在轻歪头惊喜态。</p></li>
+            </ol>
+          </article>
+
+          <article class="prompt-card initial-prompt">
+            <div class="prompt-heading"><div><span class="prompt-index">A</span><div><strong>初始 Prompt</strong><small>基于动作拆解生成</small></div></div><button class="copy-button" type="button" data-copy="initialPrompt"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="1.7"/></svg><span>复制</span></button></div>
+            <pre id="initialPrompt">保持当前人物 IP 的圆润短脸、大头身比例、深色短发翘发、豆形黑瞳、短弧眉、小尺寸线性嘴与青蓝外套，严格延续原图扁平赛璐璐画风。起始状态为克制的平静期待：双眼正常睁开、眉毛平直、嘴唇轻闭、头部居中。目标情绪为带害羞感的突然惊喜，强度 78%。
+
+动作：双上眼睑快速抬高 35%，右眼先动、左眼延迟约 60ms；双瞳向画面右上移动 12%，高光随之放大。右眉内端先上扬 18%，左眉随后跟进并保留轻微不对称。嘴唇从轻闭变为小 O 形，嘴角先下压后回弹，下唇轻微前探。头部向画面左侧歪 6°并后仰 4°。双颊低饱和粉红由右向左扩散。
+
+节奏为快起慢停：眼睑与右眉首先触发，嘴部和头部随后跟进，最后高光与腮红缓慢收束，停留在双眼大睁、瞳孔右上聚焦、轻歪头的小幅惊喜状态。</pre>
+          </article>
+
+          <article class="check-card">
+            <div class="check-head"><div class="check-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12.5 9 17l11-11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><strong>复刻检查</strong><span>7 / 8 项通过</span></div><span class="check-score">稳定度 91</span></div>
+            <div class="check-items">
+              <span class="pass">IP 锚点完整</span><span class="pass">左右眼已分别描述</span><span class="pass">先后关系清晰</span><span class="pass">速度与幅度明确</span><span class="warning">嘴部终态需加强约束</span>
+            </div>
+            <p><b>自动修正：</b>补充“最终嘴部开口不超过脸宽 9%，牙齿不可见”，避免生成模型将惊喜误画为夸张大笑。</p>
+          </article>
+
+          <article class="prompt-card final-prompt">
+            <div class="final-ribbon">推荐使用</div>
+            <div class="prompt-heading"><div><span class="prompt-index">B</span><div><strong>最终优化 Prompt</strong><small>已通过反向复刻检查</small></div></div><button class="copy-button prominent" type="button" data-copy="finalPrompt"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="1.7"/></svg><span>复制 Prompt</span></button></div>
+            <pre id="finalPrompt">【人物身份保持】严格保持当前人物 IP：圆润短脸、大头身比例、深色短发与顶部单缕翘发、豆形黑瞳、短弧眉、小尺寸线性嘴、青蓝外套；保持原图线条粗细、配色、材质与扁平赛璐璐插画风，不改变年龄感、脸型、五官间距和发型轮廓。
+
+【起始→目标】起始为克制的平静期待：双眼正常睁开，瞳孔居中，眉毛近乎平直，嘴唇轻闭，头部居中。目标为带轻微害羞的突然惊喜，情绪强度 78%。
+
+【动作序列】0–120ms：右上眼睑先快速抬高，右眉内端同步上扬；左眼与左眉延迟约 60ms 跟进，双眼最终比起始睁大 35%，保留右侧略高的自然不对称。120–300ms：双瞳共同向画面右上平移 12%，聚焦同一远点，右眼高光先放大、左眼高光随后回弹。180–420ms：嘴唇由轻闭变为小 O 形，嘴角先下压 3% 再回弹，开口宽度不超过脸宽 9%，牙齿不可见，下唇仅轻微前探。250–520ms：头部向画面左侧歪 6°并后仰 4°，不改变脸部透视比例。350–700ms：低饱和腮红从右颊向左颊轻微扩散，鼻梁下阴影收紧。
+
+【节奏与终态】整体快起慢停，右侧五官向左侧错峰传播；前 30% 突然触发，中段连续过渡，末段缓慢收束并停留 0.6 秒。最终保持双眼大睁、瞳孔右上聚焦、双眉上扬但右高左低、小 O 形嘴、轻微左歪头的惊喜状态。灵动感来自“眼神先行 + 左右错峰 + 高光回弹 + 头部小幅滞后”。
+
+【一致性约束】只改变表情与微小头部姿态；禁止改变人物身份、发型、服装、脸型、眼睛基础形状、头身比例、原画风与镜头构图；禁止夸张大笑、露齿、双眼完全对称、额外肢体动作或跨 IP 风格迁移。</pre>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>已复制到剪贴板</span></div>
+  <script src="./app.js"></script>
+</body>
+</html>
